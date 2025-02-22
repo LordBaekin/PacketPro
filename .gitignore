@@ -361,3 +361,10 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/PacketPro.py
+/main.py
+/profiling_results.txt
+/HexPayloadParser.py
+/guibackup.py
+/DynamicOffsetManager.py
+/location_log.csv

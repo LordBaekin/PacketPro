@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>7d249dbe-dab5-432b-9cc6-d1b76f45f6b4</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>PacketPro.py</StartupFile>
+    <StartupFile>gui_main.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -21,7 +21,17 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="PacketPro.py" />
+    <Compile Include="gui_payload_analysis.py" />
+    <Compile Include="gui_packet_list.py" />
+    <Compile Include="gui_live_capture.py" />
+    <Compile Include="gui_main.py" />
+    <Compile Include="location_tracker.py" />
+    <Compile Include="coordinate_analyzer.py" />
+    <Compile Include="payload_decoder.py" />
+    <Compile Include="encoding_detector.py" />
+    <Compile Include="packet_decoder.py" />
+    <Compile Include="protocol_decoder.py" />
+    <Compile Include="live_packet_scanner.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
