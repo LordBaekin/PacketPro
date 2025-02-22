@@ -27,29 +27,78 @@ from protocol_decoder import ProtocolDecoder
 from encoding_detector import EncodingDetector
 
 class PacketDecoder:
+    """
+    The PacketDecoder class performs comprehensive decoding and analysis of network packets.
+    It leverages a ProtocolDecoder to extract protocol-specific details and an EncodingDetector
+    to assess and detect various text encodings present in packet payloads.
+    
+    The class provides methods to decode an entire packet as well as to perform in-depth
+    analysis on the packet payload, including calculating entropy, attempting multiple text decodings,
+    detecting common encoding schemes, and identifying file signatures based on magic numbers.
+    
+    Attributes:
+        protocol_decoder (ProtocolDecoder): Instance used to decode protocol layers of a packet.
+        encoding_detector (EncodingDetector): Instance used to detect and analyze payload encodings.
+    """
+
     def __init__(self):
+        """
+        Initialize a new PacketDecoder instance by creating instances of ProtocolDecoder and EncodingDetector.
+        """
         self.protocol_decoder = ProtocolDecoder()
         self.encoding_detector = EncodingDetector()
+
     def decode_packet(self, packet):
-        """Complete packet decoding and analysis"""
+        """
+        Perform complete decoding and analysis of a network packet.
+
+        This method first uses the protocol_decoder to extract basic protocol information.
+        If the packet contains a 'Raw' layer, it extracts the payload and performs comprehensive
+        payload analysis using the analyze_payload method. The resulting decoded information,
+        including protocol and payload details, is returned as a dictionary.
+        
+        Parameters:
+            packet: The network packet to be decoded.
+            
+        Returns:
+            dict: A dictionary containing decoded information from various layers of the packet.
+        """
         # Get basic protocol decoding
         decoded = self.protocol_decoder.decode_packet(packet)
         
-        # Add payload analysis
+        # Add payload analysis if Raw layer exists
         if packet.haslayer('Raw'):
             payload = bytes(packet[scapy.Raw].load)
             decoded['payload_analysis'] = self.analyze_payload(payload)
         return decoded
 
     def analyze_payload(self, payload):
-        """Comprehensive payload analysis"""
+        """
+        Perform comprehensive analysis of a packet payload.
+
+        This method creates a dictionary containing:
+          - The length and hexadecimal representation of the payload.
+          - The Shannon entropy of the payload.
+          - Attempts to decode the payload as UTF-8 and ASCII text.
+          - Detection of common encodings (e.g., Base64, Hex) via the encoding_detector.
+          - Identification of file signatures based on known magic numbers.
+          
+        Detected encodings are added along with a confidence score and, if available, both hexadecimal
+        and UTF-8 representations of the decoded data.
+        
+        Parameters:
+            payload (bytes): The raw payload data from a network packet.
+            
+        Returns:
+            dict: A dictionary containing detailed analysis of the payload.
+        """
         analysis = {
             'length': len(payload),
             'hex': payload.hex(),
             'entropy': self.encoding_detector.calculate_entropy(payload)
         }
         
-        # Try to decode as text
+        # Try to decode as text using UTF-8, falling back to ASCII if necessary.
         try:
             analysis['utf8'] = payload.decode('utf-8')
         except:
@@ -57,7 +106,8 @@ class PacketDecoder:
                 analysis['ascii'] = payload.decode('ascii', errors='replace')
             except:
                 pass
-        # Detect encodings
+        
+        # Detect encodings using the EncodingDetector.
         encodings = self.encoding_detector.detect_encoding(payload)
         if encodings:
             analysis['detected_encodings'] = []
@@ -80,14 +130,27 @@ class PacketDecoder:
                             'hex': decoded.hex() if isinstance(decoded, bytes) else None
                         }
                 analysis['detected_encodings'].append(encoding_info)
-        # Try to identify file signatures
+        
+        # Attempt to identify file signatures based on magic numbers.
         file_type = self.identify_file_signature(payload)
         if file_type:
             analysis['file_type'] = file_type
+        
         return analysis
 
     def identify_file_signature(self, data):
-        """Identify file type based on magic numbers"""
+        """
+        Identify the file type of the given data based on its magic number (file signature).
+
+        The method checks the start of the data against a dictionary of known signatures.
+        If a match is found, the corresponding file type is returned.
+        
+        Parameters:
+            data (bytes): The data to analyze for file signatures.
+            
+        Returns:
+            str or None: The identified file type if a signature matches, otherwise None.
+        """
         signatures = {
             b'\xFF\xD8\xFF': 'JPEG',
             b'\x89PNG\r\n\x1A\n': 'PNG',
