@@ -94,11 +94,12 @@ class PayloadDecoder:
 
         Parameters:
             data (bytes): The raw payload data from a packet.
-            
+        
         Returns:
             dict: A dictionary containing the results of the payload analysis.
                   Keys include 'length', 'hex_dump', 'file_type', 'data_analysis',
-                  'text_analysis', 'entropy', 'encoding_analysis', and 'structure_analysis'.
+                  'text_analysis', 'entropy', 'encoding_analysis', 'structure_analysis',
+                  'numeric_values', and 'string_sequences'.
         """
         result = {
             'length': len(data),
@@ -110,7 +111,23 @@ class PayloadDecoder:
             'encoding_analysis': self.analyze_encodings(data),
             'structure_analysis': self.analyze_structure(data)
         }
+    
+        # --- NEW SECTION: Inject Numeric and String Sequences ---
+        # From data_analysis, get the numeric sequences (under 'numbers') and convert to a dictionary.
+        numeric_values = {}
+        for seq in result['data_analysis'].get('numbers', []):
+            # Composite key: e.g., "float32_le@57"
+            key = f"{seq['type']}@{seq['offset']}"
+            numeric_values[key] = seq['value']
+        result['numeric_values'] = numeric_values
+
+        # Also, pass along the string sequences.
+        result['string_sequences'] = result['data_analysis'].get('strings', [])
+        # --- End NEW SECTION ---
+    
         return result
+
+
 
     def create_hex_dump(self, data: bytes) -> list:
         """

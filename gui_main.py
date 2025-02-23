@@ -541,9 +541,12 @@ class PacketAnalyzerGUI(LiveCaptureMixin, PacketListMixin, PayloadAnalysisMixin)
                 self.status_var.set("Loaded coordinate CSV file")
             except Exception as e:
                 messagebox.showerror("Error", str(e))
+
     def follow_selected_conversation(self):
         """
-        Retrieves the conversation for the selected packet and displays its details.
+        Retrieves the conversation for the selected packet and displays its details
+        in a tabbed window. One tab shows hex dump differences, and the other shows
+        numeric differences (interpreted int/float changes) from the payload analysis.
         """
         # Get the selected packet from the packet list
         selection = self.packet_tree.selection()
@@ -553,23 +556,51 @@ class PacketAnalyzerGUI(LiveCaptureMixin, PacketListMixin, PayloadAnalysisMixin)
         item = self.packet_tree.selection()[0]
         packet_num = int(self.packet_tree.item(item)['values'][0]) - 1
         decoded_packet = self.packet_decoder.decode_packet(self.packets[packet_num])
-    
+
         # Construct the conversation key from the selected packet.
         conv_key = self.conversation_tracker._get_conversation_key(decoded_packet)
         if conv_key is None:
             messagebox.showerror("Error", "Could not determine conversation key")
             return
-    
-        # Retrieve the conversation details.
-        conv_text = self.conversation_tracker.follow_conversation(conv_key)
-    
-        # Display the conversation in a new window.
+
+        # Create a new top-level window for the conversation details.
         conv_window = tk.Toplevel(self.root)
         conv_window.title("Conversation Details")
-        text_widget = tk.Text(conv_window, wrap='word')
-        text_widget.insert('1.0', conv_text)
-        text_widget.config(state='disabled')
-        text_widget.pack(fill='both', expand=True)
+
+        # Create a Notebook widget (tab control) to hold two tabs.
+        notebook = ttk.Notebook(conv_window)
+        notebook.pack(fill='both', expand=True)
+
+        # Tab 1: Hex Dump Differences
+        hex_frame = ttk.Frame(notebook)
+        notebook.add(hex_frame, text="Hex Dump Differences")
+        hex_text = tk.Text(hex_frame, wrap='none')
+        hex_text.pack(fill='both', expand=True)
+        hex_diff = self.conversation_tracker.follow_conversation(conv_key)
+        hex_text.insert('1.0', hex_diff)
+        hex_text.config(state='disabled')
+
+        # Tab 2: Numeric Differences
+        num_frame = ttk.Frame(notebook)
+        notebook.add(num_frame, text="Numeric Differences")
+        num_text = tk.Text(num_frame, wrap='none')
+        num_text.pack(fill='both', expand=True)
+
+        # Configure text tags for colors.
+        num_text.tag_configure("green", foreground="green")
+        num_text.tag_configure("red", foreground="red")
+
+        # Get the list of (line, tag) tuples.
+        num_diff = self.conversation_tracker.follow_numeric_differences(conv_key)
+        for line, tag in num_diff:
+            if tag:
+                num_text.insert(tk.END, line + "\n", tag)
+            else:
+                num_text.insert(tk.END, line + "\n")
+        num_text.config(state='disabled')
+
+
+
 
     def analyze_coordinates(self):
         """
