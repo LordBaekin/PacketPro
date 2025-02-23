@@ -120,13 +120,13 @@ class PayloadAnalysisMixin:
         This method clears the current content and, if a valid payload exists in the decoded_packet,
         it retrieves the raw payload data (as hex), decodes it using the PayloadDecoder, and then displays:
           - Basic information (length, entropy, detected file type if available)
-          - Hex dump along with ASCII interpretation
-          - Numeric sequences, string sequences, text encoding analysis, repeating patterns,
-            structural boundary markers, and additional encoding analysis.
+          - A formatted hex dump (hexadecimal + ASCII) produced by the new format_hex_ascii_dump method
+          - Hex dump with interpretations, numeric sequences, string sequences, text encoding analysis,
+            repeating patterns, structural boundary markers, and additional encoding analysis.
 
         If an error occurs during analysis, an error message is displayed in the text widget.
         If no payload data is available, it notifies the user accordingly.
-        
+    
         Parameters:
             decoded_packet (dict): The dictionary containing decoded packet information, including a 'payload' key.
         """
@@ -139,7 +139,7 @@ class PayloadAnalysisMixin:
                 try:
                     raw_data = bytes.fromhex(payload_info['raw']['hex'])
                     analysis = decoder.analyze_payload(raw_data)
-                    
+                
                     # Basic Information
                     self.payload_text.insert(tk.END, "BASIC INFORMATION\n")
                     self.payload_text.insert(tk.END, "=" * 70 + "\n")
@@ -148,7 +148,13 @@ class PayloadAnalysisMixin:
                     if analysis.get('file_type', 'UNKNOWN') != 'UNKNOWN':
                         self.payload_text.insert(tk.END, f"Detected File Type: {analysis['file_type']}\n")
                     self.payload_text.insert(tk.END, "\n")
-                    
+                
+                    # Formatted Hex Dump using the new method
+                    formatted_dump = decoder.format_hex_ascii_dump(raw_data)
+                    self.payload_text.insert(tk.END, "FORMATTED HEX DUMP\n")
+                    self.payload_text.insert(tk.END, "=" * 70 + "\n")
+                    self.payload_text.insert(tk.END, formatted_dump + "\n\n")
+                
                     # Hex Dump and Interpretations
                     self.payload_text.insert(tk.END, "HEX DUMP AND INTERPRETATIONS\n")
                     self.payload_text.insert(tk.END, "=" * 70 + "\n")
@@ -166,21 +172,21 @@ class PayloadAnalysisMixin:
                                     self.payload_text.insert(tk.END, " " * 10 + f"{dtype}: {value:.6f}\n")
                                 else:
                                     self.payload_text.insert(tk.END, " " * 10 + f"{dtype}: {value}\n")
-                    
+                
                     # Numeric Sequences
                     if analysis['data_analysis']['numbers']:
                         self.payload_text.insert(tk.END, "\nNUMERIC SEQUENCES FOUND\n")
                         self.payload_text.insert(tk.END, "=" * 70 + "\n")
                         for seq in analysis['data_analysis']['numbers']:
                             self.payload_text.insert(tk.END, f"Offset 0x{seq['offset']:04x}: {seq['type']} = {seq['value']}\n")
-                    
+                
                     # String Sequences
                     if analysis['data_analysis']['strings']:
                         self.payload_text.insert(tk.END, "\nSTRING SEQUENCES FOUND\n")
                         self.payload_text.insert(tk.END, "=" * 70 + "\n")
                         for string_item in analysis['data_analysis']['strings']:
                             self.payload_text.insert(tk.END, f"Offset 0x{string_item['offset']:04x}: {string_item['string']} (length: {string_item['length']})\n")
-                    
+                
                     # Text Encoding Analysis
                     if analysis['text_analysis']:
                         self.payload_text.insert(tk.END, "\nTEXT ENCODING ANALYSIS\n")
@@ -189,14 +195,14 @@ class PayloadAnalysisMixin:
                             if result['printable_ratio'] > 0.5:
                                 self.payload_text.insert(tk.END, f"{encoding} ({result['printable_ratio']:.2%} printable):\n")
                                 self.payload_text.insert(tk.END, f"{result['text']}\n\n")
-                    
+                
                     # Repeating Patterns
                     if analysis['data_analysis']['repeating']:
                         self.payload_text.insert(tk.END, "\nREPEATING PATTERNS\n")
                         self.payload_text.insert(tk.END, "=" * 70 + "\n")
                         for pattern in analysis['data_analysis']['repeating']:
                             self.payload_text.insert(tk.END, f"Offset 0x{pattern['offset']:04x}: Pattern {pattern['pattern']} repeats {pattern['repeats']} times\n")
-                    
+                
                     # Structure Analysis - Boundary Markers
                     if analysis['structure_analysis']['boundaries']:
                         self.payload_text.insert(tk.END, "\nSTRUCTURE ANALYSIS\n")
@@ -204,7 +210,7 @@ class PayloadAnalysisMixin:
                         for boundary in analysis['structure_analysis']['boundaries']:
                             positions = ', '.join(f'0x{pos:04x}' for pos in boundary['positions'])
                             self.payload_text.insert(tk.END, f"Boundary marker {boundary['marker']} found at offsets: {positions}\n")
-                    
+                
                     # Additional Encoding Analysis
                     if analysis['encoding_analysis']:
                         self.payload_text.insert(tk.END, "\nADDITIONAL ENCODING ANALYSIS\n")

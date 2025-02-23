@@ -1,0 +1,109 @@
+Advanced Network Packet Analyzer Tutorial
+===========================================
+
+Overview:
+---------
+The Advanced Network Packet Analyzer (PacketPro) is designed to capture, decode, and analyze network packets in real time. It decodes multiple protocol layers (Layer 2 through Layer 7), performs detailed payload analysis, and extracts geographical location data from packet payloads. This tutorial will guide you step-by-step through installation, usage, and troubleshooting.
+
+Repository:
+-----------
+The source code is hosted on GitHub:
+https://github.com/LordBaekin/PacketPro/tree/PacketProModular
+
+Default Installation Location:
+------------------------------
+For this project, the default installation is set to your Documents folder. On Windows, the expected location is:
+   C:\Users\YOURUSERNAMEHERE\Documents\PacketProModular
+On macOS/Linux, place the project in your ~/Documents directory.
+
+Prerequisites:
+--------------
+- Python 3.x installed on your system.
+- Administrative or appropriate privileges to capture live network packets.
+- Internet connection to clone the repository.
+
+Installation Steps:
+-------------------
+1. **Clone the Repository:**
+   Open your terminal or command prompt and run:
+   
+       git clone https://github.com/LordBaekin/PacketPro.git
+       cd PacketPro/PacketProModular
+
+   (Alternatively, if you prefer, you can copy the repository folder into your Documents folder.)
+
+2. **Install Dependencies:**
+   Install the required packages using pip:
+   
+       pip install -r requirements.txt
+
+Usage:
+------
+1. **Launching the Application:**
+   Run the main GUI application:
+   
+       python gui_main.py
+   
+   The GUI window will open, showing menus, toolbars, and panels for packet capture, analysis, and location tracking.
+
+2. **Live Packet Capture:**
+   - In the "Live Capture" section, select a network interface from the dropdown.
+   - Click "Start Capture" to begin capturing live packets.
+   - Packets will appear in the packet list in real time.
+   - Click "Stop Capture" to end the live capture.
+
+3. **Loading PCAP Files:**
+   - Use the "File" menu and select "Open PCAP" to load a pre-recorded PCAP file.
+   - The application will decode and display the packets from the file.
+
+4. **Analyzing Packets:**
+   - Click on a packet in the list to view detailed information.
+   - The right-hand panels show:
+     * **Packet Details:** Breakdown of protocol layers (Layer 2 to Layer 7).
+     * **Payload Analysis:** Hex dump, text decodings, entropy, and detected encodings.
+     * **Protocol Analysis:** Protocol-specific data (HTTP, DNS, TLS).
+
+5. **Filtering and Exporting:**
+   - Apply quick filters (TCP, UDP, HTTP, DNS) using toolbar buttons.
+   - Reset filters or apply custom filters via the filter field.
+   - Export the analysis as JSON or save a detailed report via the "Export" or "Save Analysis" options.
+
+6. **Location Tracking:**
+   - The application automatically extracts coordinate data from packet payloads (if available).
+   - The current valid location is shown in the location label.
+   - A history of valid locations is maintained and can be viewed in the location history panel.
+   - Optionally, enable logging to save location data to a CSV file.
+
+Troubleshooting:
+----------------
+- **No Packets Captured:**
+  * Ensure you have selected the correct network interface.
+  * Run the application with administrative privileges.
+  
+- **Decoding Issues:**
+  * Some packets may contain non-decodable or encrypted data; this is normal.
+  * Use the detailed export and logging features to analyze raw data offline.
+
+- **Location Data Not Displaying:**
+  * The location extraction relies on specific payload offsets. Not all packets contain valid coordinate data.
+  * Check the log files for any error messages.
+
+Advanced Usage:
+---------------
+- **Extending Decoding Capabilities:**
+  * Developers can modify modules such as ProtocolDecoder, PacketDecoder, PayloadDecoder, EncodingDetector, CoordinateAnalyzer, and LocationTracker to support additional protocols or decoding techniques.
+  
+- **Custom Filters:**
+  * Write custom filter expressions to refine which packets are displayed and analyzed.
+  
+- **Data Export:**
+  * Use the export functionality to generate detailed reports in JSON or text format for further offline analysis.
+
+Contact and Support:
+---------------------
+For further assistance, feature requests, or bug reports, please contact:
+  
+  Baekin on Discord
+  
+
+Happy Analyzing!

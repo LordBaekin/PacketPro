@@ -781,3 +781,15 @@ class PayloadDecoder:
             
         return 'UNKNOWN'
 
+    def format_hex_ascii_dump(self, data: bytes) -> str:
+        hex_dump = self.create_hex_dump(data)
+        lines = []
+        header = "Offset  Hexadecimal                                              ASCII"
+        lines.append(header)
+        lines.append("-" * len(header))
+        for line in hex_dump:
+            offset = f"{line['offset']:04X}"
+            hex_str = line['hex'].ljust(48)
+            ascii_str = line['ascii']
+            lines.append(f"{offset}  {hex_str}  {ascii_str}")
+        return "\n".join(lines)
