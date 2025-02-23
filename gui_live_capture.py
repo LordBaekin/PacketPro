@@ -78,6 +78,21 @@ class LiveCaptureMixin:
             location = self.location_tracker.analyze_packet_for_location(raw_data, packet.time)
             if location:
                 self.root.after(0, self.update_location_display, location)
+
+
+       # Generate a formatted hex dump using payload_decoder
+        payload_hex_dump = self.payload_decoder.create_hex_dump(raw_data)
+        if isinstance(payload_hex_dump, list):
+            payload_hex_dump_str = "\n".join(
+                f"{line['offset']:04X}  {line['hex']:<48}  {line['ascii']}" for line in payload_hex_dump)
+        else:
+            payload_hex_dump_str = payload_hex_dump
+
+        # Add the packet to the conversation tracker.
+        self.conversation_tracker.add_packet(decoded_packet, payload_hex_dump_str, decoded_packet['timestamp']['epoch'])
+
+
+
         self.root.after(0, self.add_packet_to_list, packet, decoded_packet)
         count = len(self.packets)
         self.root.after(0, self.packet_count_var.set, f"Packets: {count}")

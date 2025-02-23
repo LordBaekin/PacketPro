@@ -14,6 +14,8 @@ from packet_decoder import PacketDecoder
 from gui_live_capture import LiveCaptureMixin
 from gui_packet_list import PacketListMixin
 from gui_payload_analysis import PayloadAnalysisMixin
+from conversation_tracker import ConversationTracker
+from payload_decoder import PayloadDecoder
 
 class PacketAnalyzerGUI(LiveCaptureMixin, PacketListMixin, PayloadAnalysisMixin):
     def __init__(self, root):
@@ -22,7 +24,7 @@ class PacketAnalyzerGUI(LiveCaptureMixin, PacketListMixin, PayloadAnalysisMixin)
 
         This method sets up the main window properties, initializes essential analyzers and trackers,
         sets up packet storage lists, and configures the live packet scanner. It then proceeds to create the GUI,
-        add protocol filters and export options, and initialize live capture, protocol analysis and location tracking.
+        add protocol filters and export options, and initialize live capture, protocol analysis, conversation tracking and location tracking.
       
         Parameters:
             root: The root Tkinter window.
@@ -34,11 +36,14 @@ class PacketAnalyzerGUI(LiveCaptureMixin, PacketListMixin, PayloadAnalysisMixin)
         self.packet_decoder = PacketDecoder()
         self.coordinate_analyzer = CoordinateAnalyzer()
         self.location_tracker = LocationTracker()
+        self.payload_decoder = PayloadDecoder()
+
+        self.conversation_tracker = ConversationTracker()
         self.packets = []
         self.original_packets = []
         self.current_packet_index = 0
         try:
-            from main import LivePacketScanner
+            from live_packet_scanner import LivePacketScanner
             self.scanner = LivePacketScanner(self.process_live_packet)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to initialize live scanner: {e}")
@@ -93,6 +98,9 @@ class PacketAnalyzerGUI(LiveCaptureMixin, PacketListMixin, PayloadAnalysisMixin)
         tk.Button(toolbar, text="Reset", command=self.reset_filters).pack(side='left', padx=2)
         tk.Button(toolbar, text="Load CSV", command=self.load_coordinate_csv).pack(side='left', padx=2)
         tk.Button(toolbar, text="Find Coordinates", command=self.analyze_coordinates).pack(side='left', padx=2)
+        # In the toolbar area in create_gui() of PacketAnalyzerGUI
+        follow_conv_button = ttk.Button(toolbar, text="Follow Conversation", command=self.follow_selected_conversation)
+        follow_conv_button.pack(side='left', padx=2)
         paned_window = ttk.PanedWindow(main_container, orient='horizontal')
         paned_window.pack(fill='both', expand=True, pady=5)
         left_frame = ttk.Frame(paned_window)
@@ -171,7 +179,8 @@ class PacketAnalyzerGUI(LiveCaptureMixin, PacketListMixin, PayloadAnalysisMixin)
 
    
 
-    
+   
+
 
     def add_protocol_filters(self):
         """
@@ -532,6 +541,35 @@ class PacketAnalyzerGUI(LiveCaptureMixin, PacketListMixin, PayloadAnalysisMixin)
                 self.status_var.set("Loaded coordinate CSV file")
             except Exception as e:
                 messagebox.showerror("Error", str(e))
+    def follow_selected_conversation(self):
+        """
+        Retrieves the conversation for the selected packet and displays its details.
+        """
+        # Get the selected packet from the packet list
+        selection = self.packet_tree.selection()
+        if not selection:
+            messagebox.showwarning("Warning", "No packet selected")
+            return
+        item = self.packet_tree.selection()[0]
+        packet_num = int(self.packet_tree.item(item)['values'][0]) - 1
+        decoded_packet = self.packet_decoder.decode_packet(self.packets[packet_num])
+    
+        # Construct the conversation key from the selected packet.
+        conv_key = self.conversation_tracker._get_conversation_key(decoded_packet)
+        if conv_key is None:
+            messagebox.showerror("Error", "Could not determine conversation key")
+            return
+    
+        # Retrieve the conversation details.
+        conv_text = self.conversation_tracker.follow_conversation(conv_key)
+    
+        # Display the conversation in a new window.
+        conv_window = tk.Toplevel(self.root)
+        conv_window.title("Conversation Details")
+        text_widget = tk.Text(conv_window, wrap='word')
+        text_widget.insert('1.0', conv_text)
+        text_widget.config(state='disabled')
+        text_widget.pack(fill='both', expand=True)
 
     def analyze_coordinates(self):
         """

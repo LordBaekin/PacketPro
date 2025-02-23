@@ -138,6 +138,8 @@ class PacketDecoder:
         
         return analysis
 
+
+
     def identify_file_signature(self, data):
         """
         Identify the file type of the given data based on its magic number (file signature).

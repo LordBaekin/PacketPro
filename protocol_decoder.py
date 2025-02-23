@@ -369,9 +369,9 @@ class ProtocolDecoder:
         payload_info = {}
         
         if packet.haslayer('TCP'):
-            payload = bytes(packet[scapy.TCP].payload)
+            payload = bytes(packet)
         elif packet.haslayer('UDP'):
-            payload = bytes(packet[scapy.UDP].payload)
+            payload = bytes(packet)
         else:
             payload = bytes(packet.payload)
             

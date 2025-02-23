@@ -89,51 +89,60 @@ class LocationTracker:
 
     def analyze_packet_for_location(self, packet_data: bytes, timestamp: float) -> dict:
         """
-        Extract and validate location data from packet payload, filtering out duplicates.
+        Extract and validate location data from a packet payload using new offsets.
 
-        Steps:
-          - Ensures packet_data is sufficiently long.
-          - Extracts x, y, and z coordinates from fixed offsets.
-          - Validates the coordinates using is_valid_location.
-          - Calculates movement metrics via calculate_movement.
-          - Computes a hash from the rounded (x, y, z) coordinates.
-          - Checks for duplicates using the location_hashes set.
-          - Updates the history and current location.
-            (Now, if no previous location exists, the valid location is still added to history.)
-          - Logs the data if logging is active.
-          - Returns the location dictionary.
+        Expected new offsets (in hexadecimal):
+          - X coordinate: 4 bytes starting at offset 0x0039 (decimal 57)
+          - Y coordinate: 4 bytes starting at offset 0x0043 (decimal 67)
+          - Z coordinate: 4 bytes starting at offset 0x003E (decimal 62)
+
+        The method performs the following steps:
+          1. Checks that the payload is long enough to contain the required data.
+          2. Extracts the x, y, and z coordinates using struct.unpack with little-endian float format.
+          3. Validates the extracted coordinates with is_valid_location().
+          4. Calculates movement metrics (speed and direction) via calculate_movement().
+          5. Computes a hash of the rounded coordinates for duplicate filtering.
+          6. Updates the location history:
+             - For the first valid location, it appends the result.
+             - For subsequent valid locations, it appends the previous current location before updating.
+          7. If logging is active, writes a CSV record containing the timestamp, coordinates, movement, and a raw hex representation.
 
         Parameters:
-            packet_data (bytes): Raw packet payload data.
-            timestamp (float): Packet timestamp.
+            packet_data (bytes): The raw payload data from the packet.
+            timestamp (float): The timestamp of the packet capture.
 
         Returns:
-            dict: Dictionary with location data (including 'hash') if valid and unique; None otherwise.
+            dict: A dictionary with the location data (keys include 'timestamp', 'x', 'y', 'z', 'speed',
+                  'direction', 'raw_hex', and 'hash') if the location is valid and unique.
+                  Returns None if the payload is too short, the data is invalid, or it is a duplicate.
         """
         try:
-            if len(packet_data) < 32:
+            # Ensure the payload is long enough; we need at least 0x0043 + 4 bytes (i.e. 71 bytes).
+            if len(packet_data) < 0x0047:
                 return None
 
-            # Extract coordinates from predetermined offsets.
-            x = struct.unpack('<f', packet_data[0x000f:0x0013])[0]
-            y = struct.unpack('<f', packet_data[0x0014:0x0018])[0]
-            z = struct.unpack('<f', packet_data[0x0019:0x001d])[0]
+            # Extract coordinates using the new offsets:
+            # X coordinate: bytes 0x0039 to 0x0039+4
+            x = struct.unpack('<f', packet_data[0x0039:0x0039+4])[0]
+            # Y coordinate: bytes 0x0043 to 0x0043+4
+            y = struct.unpack('<f', packet_data[0x0043:0x0043+4])[0]
+            # Z coordinate: bytes 0x003E to 0x003E+4
+            z = struct.unpack('<f', packet_data[0x003E:0x003E+4])[0]
 
-            # Validate coordinates.
+            # Validate coordinates
             if not self.is_valid_location(x, y, z):
                 return None
 
+            # Calculate movement metrics
             speed, direction = self.calculate_movement(x, y, z)
 
-            # Compute hash using rounded coordinates (to 5 decimal places).
+            # Compute a unique hash for duplicate filtering (round coordinates to 5 decimal places)
             location_hash = hash((round(x, 5), round(y, 5), round(z, 5)))
-
-            # Filter out duplicate locations.
             if location_hash in self.location_hashes:
                 return None
-
             self.location_hashes.add(location_hash)
 
+            # Prepare the result dictionary
             result = {
                 'timestamp': timestamp,
                 'x': x,
@@ -141,28 +150,35 @@ class LocationTracker:
                 'z': z,
                 'speed': speed,
                 'direction': direction,
-                'raw_hex': packet_data[0x000f:0x001d].hex(),
+                # Optionally, log a relevant portion of the payload as hex (from offset 0x0039 to 0x003E+4)
+                'raw_hex': packet_data[0x0039:0x003E+4].hex(),
                 'hash': location_hash
             }
 
-            # Update history: if current_location is None, add this result;
-            # otherwise, add the previous current_location to history and update current.
+            # Update location history:
+            # Append the previous current location (if it exists) to the history and update current_location.
             if self.current_location is None:
                 self.locations.append(result)
             else:
                 self.locations.append(self.current_location)
                 self.current_location = result
 
-            # Always update current_location to the new result.
+            # Always update current location
             self.current_location = result
 
+            # If logging is active, write the location data to the CSV file
             if self.logging_active and self.log_file:
-                self.log_file.write(f"{timestamp},{x},{y},{z},{speed},{direction},{packet_data[0x000f:0x001d].hex()}\n")
+                self.log_file.write(
+                    f"{timestamp},{x},{y},{z},{speed},{direction},{packet_data[0x0039:0x003E+4].hex()}\n"
+                )
 
             return result
+
         except Exception as e:
             print(f"Location analysis error: {e}")
             return None
+
+
 
     def is_valid_location(self, x, y, z) -> bool:
         """

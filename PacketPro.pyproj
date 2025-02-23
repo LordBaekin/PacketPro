@@ -30,6 +30,7 @@
     <Compile Include="payload_decoder.py" />
     <Compile Include="encoding_detector.py" />
     <Compile Include="packet_decoder.py" />
+    <Compile Include="conversation_tracker.py" />
     <Compile Include="protocol_decoder.py" />
     <Compile Include="live_packet_scanner.py" />
   </ItemGroup>
