@@ -547,6 +547,7 @@ class PacketAnalyzerGUI(LiveCaptureMixin, PacketListMixin, PayloadAnalysisMixin)
         Retrieves the conversation for the selected packet and displays its details
         in a tabbed window. One tab shows hex dump differences, and the other shows
         numeric differences (interpreted int/float changes) from the payload analysis.
+        The window includes a search bar with Find/Find Next functionality.
         """
         # Get the selected packet from the packet list
         selection = self.packet_tree.selection()
@@ -567,30 +568,116 @@ class PacketAnalyzerGUI(LiveCaptureMixin, PacketListMixin, PayloadAnalysisMixin)
         conv_window = tk.Toplevel(self.root)
         conv_window.title("Conversation Details")
 
+        # ----- Create the search bar at the top -----
+        search_frame = ttk.Frame(conv_window)
+        search_frame.pack(fill='x', padx=5, pady=5)
+        ttk.Label(search_frame, text="Search:").pack(side='left', padx=2)
+        search_var = tk.StringVar()
+        search_entry = ttk.Entry(search_frame, textvariable=search_var, width=30)
+        search_entry.pack(side='left', padx=2)
+        find_button = ttk.Button(search_frame, text="Find")
+        find_button.pack(side='left', padx=2)
+        find_next_button = ttk.Button(search_frame, text="Find Next")
+        find_next_button.pack(side='left', padx=2)
+        match_count_label = ttk.Label(search_frame, text="Matches: 0")
+        match_count_label.pack(side='left', padx=2)
+
         # Create a Notebook widget (tab control) to hold two tabs.
         notebook = ttk.Notebook(conv_window)
-        notebook.pack(fill='both', expand=True)
+        notebook.pack(fill='both', expand=True, padx=5, pady=5)
 
-        # Tab 1: Hex Dump Differences
+        # ----- Helper: Get the active Text widget in the current tab -----
+        def get_current_text_widget():
+            current_tab = notebook.nametowidget(notebook.select())
+            # Look recursively for a Text widget in the current tab.
+            for child in current_tab.winfo_children():
+                if isinstance(child, tk.Text):
+                    return child
+                # If not directly found, try the children of the child.
+                for subchild in child.winfo_children():
+                    if isinstance(subchild, tk.Text):
+                        return subchild
+            return None
+
+        # ----- Search Functions -----
+        # We'll maintain a local list of search results and an index.
+        search_results = []
+        current_match_index = [ -1 ]  # use a list to allow modification in nested function
+
+        def do_find():
+            term = search_var.get()
+            if not term:
+                return
+            text_widget = get_current_text_widget()
+            if not text_widget:
+                return
+            # Clear previous highlights and search results.
+            text_widget.tag_remove("search", "1.0", tk.END)
+            search_results.clear()
+            current_match_index[0] = -1
+
+            start = "1.0"
+            while True:
+                pos = text_widget.search(term, start, stopindex=tk.END, nocase=True)
+                if not pos:
+                    break
+                end = f"{pos}+{len(term)}c"
+                text_widget.tag_add("search", pos, end)
+                search_results.append(pos)
+                start = end
+            text_widget.tag_config("search", background="yellow", foreground="black")
+            match_count_label.config(text=f"Matches: {len(search_results)}")
+            # Automatically highlight first match if available.
+            if search_results:
+                current_match_index[0] = 0
+                text_widget.mark_set(tk.INSERT, search_results[0])
+                text_widget.see(search_results[0])
+
+        def do_find_next():
+            term = search_var.get()
+            if not term:
+                return
+            text_widget = get_current_text_widget()
+            if not text_widget or not search_results:
+                do_find()  # If no previous search, run find
+                return
+            # Cycle to next match.
+            current_match_index[0] = (current_match_index[0] + 1) % len(search_results)
+            pos = search_results[current_match_index[0]]
+            text_widget.mark_set(tk.INSERT, pos)
+            text_widget.see(pos)
+
+        find_button.config(command=do_find)
+        find_next_button.config(command=do_find_next)
+
+        # ----- Create Tab 1: Hex Dump Differences with scrollbar -----
         hex_frame = ttk.Frame(notebook)
         notebook.add(hex_frame, text="Hex Dump Differences")
-        hex_text = tk.Text(hex_frame, wrap='none')
-        hex_text.pack(fill='both', expand=True)
+        hex_text_frame = ttk.Frame(hex_frame)
+        hex_text_frame.pack(fill='both', expand=True)
+        hex_scrollbar = ttk.Scrollbar(hex_text_frame, orient='vertical')
+        hex_text = tk.Text(hex_text_frame, wrap='none', yscrollcommand=hex_scrollbar.set)
+        hex_scrollbar.config(command=hex_text.yview)
+        hex_scrollbar.pack(side='right', fill='y')
+        hex_text.pack(side='left', fill='both', expand=True)
         hex_diff = self.conversation_tracker.follow_conversation(conv_key)
         hex_text.insert('1.0', hex_diff)
         hex_text.config(state='disabled')
 
-        # Tab 2: Numeric Differences
+        # ----- Create Tab 2: Numeric Differences with scrollbar and color tagging -----
         num_frame = ttk.Frame(notebook)
         notebook.add(num_frame, text="Numeric Differences")
-        num_text = tk.Text(num_frame, wrap='none')
-        num_text.pack(fill='both', expand=True)
-
-        # Configure text tags for colors.
+        num_text_frame = ttk.Frame(num_frame)
+        num_text_frame.pack(fill='both', expand=True)
+        num_scrollbar = ttk.Scrollbar(num_text_frame, orient='vertical')
+        num_text = tk.Text(num_text_frame, wrap='none', yscrollcommand=num_scrollbar.set)
+        num_scrollbar.config(command=num_text.yview)
+        num_scrollbar.pack(side='right', fill='y')
+        num_text.pack(side='left', fill='both', expand=True)
+        # Configure text tags for color highlighting.
         num_text.tag_configure("green", foreground="green")
         num_text.tag_configure("red", foreground="red")
-
-        # Get the list of (line, tag) tuples.
+        # Get the list of (line, tag) tuples from the conversation tracker.
         num_diff = self.conversation_tracker.follow_numeric_differences(conv_key)
         for line, tag in num_diff:
             if tag:
@@ -598,6 +685,8 @@ class PacketAnalyzerGUI(LiveCaptureMixin, PacketListMixin, PayloadAnalysisMixin)
             else:
                 num_text.insert(tk.END, line + "\n")
         num_text.config(state='disabled')
+
+
 
 
 
