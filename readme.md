@@ -130,10 +130,3 @@ The main GUI class that integrates all modules, providing the user interface for
 - **load_coordinate_csv():** Loads coordinate CSV data.
 - **analyze_coordinates():** Performs coordinate analysis against loaded packets and CSV data.
 
-
-
-This README serves both as documentation for developers and users and as a quick reference for the project’s structure and functionality.
-
----
-
-This README and the steps above should help you both understand your project in detail and guide you in creating and integrating a README file into your Visual Studio 2022 project.
